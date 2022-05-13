@@ -15,11 +15,10 @@ def remove_padding(data):
 
 
 def get_key_size(option):
-    # not working properly different modes offer key sizes,
-    # TODO update key len combobox dependent on mode combobox content
-    key_dic = {16: 0, 24: 1, 32: 2}
-    print([size for size in algorithms.AES.key_sizes][key_dic[option]])
-    return [size for size in algorithms.AES.key_sizes][key_dic[option]] // 8
+    key_dic = {16: 0, 24: 3, 32: 1}
+    key_sizes = [size for size in algorithms.AES.key_sizes]
+
+    return key_sizes[key_dic[option]] // 8
 
 
 def ecb_encrypt(data, key_size=32):
@@ -30,7 +29,7 @@ def ecb_encrypt(data, key_size=32):
 
     ct = encryptor.update(data) + encryptor.finalize()
 
-    return ct, key
+    return {'ciphertext': ct, 'key': key, 'additional': None}
 
 
 def ecb_decrypt(ct, key):
@@ -49,7 +48,7 @@ def cbc_encrypt(data, key_size=3):
 
     ct = encryptor.update(data) + encryptor.finalize()
 
-    return ct, iv, key
+    return {'ciphertext': ct, 'key': key, 'additional': iv}
 
 
 def cbc_decrypt(ct, iv, key):
@@ -67,7 +66,7 @@ def ctr_encrypt(data, key_size=3):
 
     ct = encryptor.update(data) + encryptor.finalize()
 
-    return ct, nonce, key
+    return {'ciphertext': ct, 'key': key, 'additional': nonce}
 
 
 def ctr_decrypt(data, nonce, key):
@@ -76,13 +75,16 @@ def ctr_decrypt(data, nonce, key):
     return decryptor.update(data) + decryptor.finalize()
 
 
-def add_header(file_localization, algorithm: str, mode: str):
+def add_header(file_localization, algorithm: str, mode: str, additional: str = None):
     os.setxattr(file_localization, 'user.alg', bytes(algorithm.encode('ascii')))
     os.setxattr(file_localization, 'user.mode', bytes(mode.encode('ascii')))
+    if mode == 'CBC' or mode == 'CTR':
+        os.setxattr(file_localization, 'user.add', bytes(additional.encode('ascii')))
 
 
 def read_header(file_localization):
-    return os.getxattr(file_localization, 'user.alg').decode('ascii'), os.getxattr(file_localization, 'user.mode').decode('ascii')
+    return os.getxattr(file_localization, 'user.alg').decode('ascii'), os.getxattr(file_localization,
+                                                                                   'user.mode').decode('ascii')
 
 
 def encrypt(algorithm: str, mode: str, key_len: int, data):
@@ -99,4 +101,3 @@ def encrypt(algorithm: str, mode: str, key_len: int, data):
     else:
         print('Cannot resolve algorithm:', algorithm)
         return None
-
