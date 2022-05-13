@@ -83,8 +83,13 @@ def add_header(file_localization, algorithm: str, mode: str, additional: str = N
 
 
 def read_header(file_localization):
-    return os.getxattr(file_localization, 'user.alg').decode('ascii'), os.getxattr(file_localization,
-                                                                                   'user.mode').decode('ascii')
+    algo = os.getxattr(file_localization, 'user.alg').decode('ascii')
+    mode = os.getxattr(file_localization, 'user.mode').decode('ascii')
+    additional = None
+    if mode == 'CBC' or mode == 'CTR':
+        additional = os.getxattr(file_localization, 'user.add')
+
+    return {'algorithm': algo, 'mode': mode, 'additional': additional}
 
 
 def encrypt(algorithm: str, mode: str, key_len: int, data):
@@ -95,6 +100,22 @@ def encrypt(algorithm: str, mode: str, key_len: int, data):
             return cbc_encrypt(data, key_len)
         elif mode == 'CTR':
             return ctr_encrypt(data, key_len)
+        else:
+            print('Cannot resolve mode:', mode)
+            return None
+    else:
+        print('Cannot resolve algorithm:', algorithm)
+        return None
+
+
+def decrypt(algorithm: str, mode: str, key: bytes, additional: bytes, ct):
+    if algorithm == 'AES':
+        if mode == 'ECB':
+            return ecb_decrypt(ct, key)
+        elif mode == 'CBC':
+            return cbc_decrypt(ct, additional, key)
+        elif mode == 'CTR':
+            return ctr_decrypt(ct, additional, key)
         else:
             print('Cannot resolve mode:', mode)
             return None

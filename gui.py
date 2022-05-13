@@ -10,7 +10,7 @@ import shutil
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os
-from crypto_functions import encrypt, add_header
+from crypto_functions import encrypt, decrypt, add_header, read_header
 
 
 class Ui_main_window(object):
@@ -42,7 +42,7 @@ class Ui_main_window(object):
         font.setBold(True)
         font.setWeight(75)
         self.title.setFont(font)
-        self.title.setAlignment(QtCore.Qt.AlignJustify|QtCore.Qt.AlignVCenter)
+        self.title.setAlignment(QtCore.Qt.AlignJustify | QtCore.Qt.AlignVCenter)
         self.title.setWordWrap(True)
         self.title.setObjectName("title")
 
@@ -167,6 +167,7 @@ class Ui_main_window(object):
         self.file_selector_button_2.setFont(font)
         self.file_selector_button_2.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.file_selector_button_2.setObjectName("file_selector_button_2")
+        self.file_selector_button_2.clicked.connect(self.get_file_to_decrypt)
 
         self.key_localization_line_edit = QtWidgets.QLineEdit(self.centralwidget)
         self.key_localization_line_edit.setGeometry(QtCore.QRect(20, 290, 351, 23))
@@ -183,12 +184,14 @@ class Ui_main_window(object):
         self.key_selector_button.setFont(font)
         self.key_selector_button.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.key_selector_button.setObjectName("key_selector_button")
+        self.key_selector_button.clicked.connect(self.get_key_to_decrypt)
 
         self.decrypt_button = QtWidgets.QPushButton(self.centralwidget)
         self.decrypt_button.setGeometry(QtCore.QRect(20, 320, 461, 41))
         self.decrypt_button.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.decrypt_button.setObjectName("decrypt_button")
         main_window.setCentralWidget(self.centralwidget)
+        self.decrypt_button.clicked.connect(self.decrypt)
 
         self.retranslateUi(main_window)
         self.encryption_type_combobox.setCurrentIndex(0)
@@ -228,6 +231,18 @@ class Ui_main_window(object):
                                                                      "Text files (*.txt)")
         self.file_localization_line_edit.setText(file_localization)
 
+    def get_file_to_decrypt(self):
+        file_localization, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select file to encrypt",
+                                                                     os.getenv("HOME"),
+                                                                     "Text files (*.txt)")
+        self.file_localization_line_edit_2.setText(file_localization)
+
+    def get_key_to_decrypt(self):
+        key_localization, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select file to encrypt",
+                                                                    os.getenv("HOME"),
+                                                                    "Binary files (*.bin)")
+        self.key_localization_line_edit.setText(key_localization)
+
     def encrypt(self):
         file_localization = self.file_localization_line_edit.text()
         if len(file_localization) == 0:
@@ -249,10 +264,40 @@ class Ui_main_window(object):
             file.seek(0)
             file.truncate()
             file.write(output['ciphertext'])
-            with open(output_dir + '/key', 'w+b') as key:
+            with open(output_dir + '/key.bin', 'w+b') as key:
                 key.write(last_key)
 
         add_header(output_file_loc, algorithm, mode, output['additional'])
+
+    def decrypt(self):
+        ciphertext_localization = self.file_localization_line_edit_2.text()
+        key_localization = self.key_localization_line_edit.text()
+        output_dir = os.path.dirname(ciphertext_localization)
+        output_localization = output_dir + '/decrypted.txt'
+
+        if len(ciphertext_localization) == 0 or len(key_localization) == 0:
+            print('No cipher or key selected')
+            return
+
+        options = read_header(ciphertext_localization)
+        print(options)
+        with open(key_localization, 'r+b') as key_file, open(ciphertext_localization, 'r+b') as ciphertext:
+            key = bytearray(key_file.read())
+            ciphertext = bytearray(ciphertext.read())
+
+            print(key)
+            print(ciphertext)
+
+            output = decrypt(options['algorithm'],
+                             options['mode'],
+                             key,
+                             options['additional'],
+                             ciphertext)
+
+            print(output)
+
+            with open(output_localization, 'w+b') as out:
+                out.write(output)
 
 
 if __name__ == "__main__":
