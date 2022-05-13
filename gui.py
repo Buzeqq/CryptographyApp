@@ -226,19 +226,19 @@ class Ui_main_window(object):
         self.decrypt_button.setText(_translate("main_window", "Deszyfruj"))
 
     def get_file_to_encrypt(self):
-        file_localization, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select file to encrypt",
+        file_localization, _ = QtWidgets.QFileDialog.getOpenFileName(self.centralwidget, "Select file to encrypt",
                                                                      os.getenv("HOME"),
                                                                      "Text files (*.txt)")
         self.file_localization_line_edit.setText(file_localization)
 
     def get_file_to_decrypt(self):
-        file_localization, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select file to encrypt",
+        file_localization, _ = QtWidgets.QFileDialog.getOpenFileName(self.centralwidget, "Select file to encrypt",
                                                                      os.getenv("HOME"),
                                                                      "Text files (*.txt)")
         self.file_localization_line_edit_2.setText(file_localization)
 
     def get_key_to_decrypt(self):
-        key_localization, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select file to encrypt",
+        key_localization, _ = QtWidgets.QFileDialog.getOpenFileName(self.centralwidget, "Select file to encrypt",
                                                                     os.getenv("HOME"),
                                                                     "Binary files (*.bin)")
         self.key_localization_line_edit.setText(key_localization)
@@ -246,7 +246,8 @@ class Ui_main_window(object):
     def encrypt(self):
         file_localization = self.file_localization_line_edit.text()
         if len(file_localization) == 0:
-            print('No file selected')
+            QtWidgets.QMessageBox.about(self.centralwidget, "Fail", f"Failed to encrypt a file. "
+                                                                    f"No file selected!")
             return
 
         algorithm = self.algorithm_type_combobox.currentText()
@@ -255,19 +256,24 @@ class Ui_main_window(object):
 
         output_dir = os.path.dirname(file_localization)
         output_file_loc = output_dir + '/cipher.txt'
-        shutil.copy(file_localization, output_file_loc)
 
-        with open(output_file_loc, 'w+b') as file:
-            data = bytearray(file.read())
-            output = encrypt(algorithm, mode, int(key_len), data)
-            last_key = output['key']
-            file.seek(0)
-            file.truncate()
-            file.write(output['ciphertext'])
-            with open(output_dir + '/key.bin', 'w+b') as key:
-                key.write(last_key)
+        input_file = open(file_localization, 'r+b')
+        data = bytearray(input_file.read())
+        input_file.close()
+
+        output = encrypt(algorithm, mode, int(key_len), data)
+
+        output_file = open(output_file_loc, 'w+b')
+        output_file.write(output['ciphertext'])
+        output_file.close()
+
+        key_file = open(output_dir + '/key.bin', 'w+b')
+        key_file.write(output['key'])
+        key_file.close()
 
         add_header(output_file_loc, algorithm, mode, output['additional'])
+        QtWidgets.QMessageBox.about(self.centralwidget, "Success", f"File successfully encrypted. "
+                                                                   f"The output is in {output_dir} directory!")
 
     def decrypt(self):
         ciphertext_localization = self.file_localization_line_edit_2.text()
@@ -276,17 +282,16 @@ class Ui_main_window(object):
         output_localization = output_dir + '/decrypted.txt'
 
         if len(ciphertext_localization) == 0 or len(key_localization) == 0:
-            print('No cipher or key selected')
+            QtWidgets.QMessageBox.about(self.centralwidget, "Fail", f"Failed to decrypt a file. "
+                                                                    f"No file or key selected!")
             return
 
         options = read_header(ciphertext_localization)
-        print(options)
-        with open(key_localization, 'r+b') as key_file, open(ciphertext_localization, 'r+b') as ciphertext:
+        with open(key_localization, 'r+b') as key_file, \
+                open(ciphertext_localization, 'r+b') as ciphertext, \
+                open(output_localization, 'w+b') as out:
             key = bytearray(key_file.read())
             ciphertext = bytearray(ciphertext.read())
-
-            print(key)
-            print(ciphertext)
 
             output = decrypt(options['algorithm'],
                              options['mode'],
@@ -294,10 +299,10 @@ class Ui_main_window(object):
                              options['additional'],
                              ciphertext)
 
-            print(output)
+            out.write(output)
 
-            with open(output_localization, 'w+b') as out:
-                out.write(output)
+        QtWidgets.QMessageBox.about(self.centralwidget, "Succes", f"File successfully decrypted. "
+                                                                  f"The output is in {output_dir} directory!")
 
 
 if __name__ == "__main__":

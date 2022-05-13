@@ -33,13 +33,14 @@ def ecb_encrypt(data, key_size=32):
 
 
 def ecb_decrypt(ct, key):
+    # print('ct:', ct, 'key:', key)
     cipher = Cipher(algorithms.AES(key), modes.ECB())
     decryptor = cipher.decryptor()
     padded_data = decryptor.update(ct) + decryptor.finalize()
     return remove_padding(padded_data)
 
 
-def cbc_encrypt(data, key_size=3):
+def cbc_encrypt(data, key_size=32):
     key = os.urandom(get_key_size(key_size))
     iv = os.urandom(algorithms.AES.block_size // 8)
     cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
@@ -58,7 +59,7 @@ def cbc_decrypt(ct, iv, key):
     return remove_padding(padded_data)
 
 
-def ctr_encrypt(data, key_size=3):
+def ctr_encrypt(data, key_size=32):
     key = os.urandom(get_key_size(key_size))
     nonce = os.urandom(algorithms.AES.block_size // 8)
     cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))
@@ -79,7 +80,7 @@ def add_header(file_localization, algorithm: str, mode: str, additional: str = N
     os.setxattr(file_localization, 'user.alg', bytes(algorithm.encode('ascii')))
     os.setxattr(file_localization, 'user.mode', bytes(mode.encode('ascii')))
     if mode == 'CBC' or mode == 'CTR':
-        os.setxattr(file_localization, 'user.add', bytes(additional.encode('ascii')))
+        os.setxattr(file_localization, 'user.add', additional)
 
 
 def read_header(file_localization):
