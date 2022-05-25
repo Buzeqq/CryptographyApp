@@ -67,7 +67,7 @@ def ecb_decrypt(ct: bytes, key: bytes):
         data = remove_padding(padded_data, algorithms.AES.block_size)
     except ValueError:
         data = padded_data
-    return padded_data
+    return data
 
 
 def cbc_encrypt(data, key_size=128):
@@ -106,7 +106,11 @@ def cbc_decrypt(ct, iv, key):
     cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
     decryptor = cipher.decryptor()
     padded_data = decryptor.update(ct) + decryptor.finalize()
-    return remove_padding(padded_data, algorithms.AES.block_size)
+    try:
+        data = remove_padding(padded_data, algorithms.AES.block_size)
+    except ValueError:
+        data = padded_data
+    return data
 
 
 def ctr_encrypt(data, key_size=128):
@@ -171,7 +175,10 @@ def read_header(file_localization: str):
     e.g. initialization vector, nonce, and returns it as dictionary.
 
     :param file_localization: str
-    :return: {'algorithm': algorithm, 'mode': mode, 'additional': additional data}
+    :return: {'algorithm': algorithm,
+              'mode': mode,
+              'additional': additional data,
+              'shape': shape if encrypted file is image}
     """
     algo = os.getxattr(file_localization, 'user.alg').decode('ascii')
     mode = os.getxattr(file_localization, 'user.mode').decode('ascii')
